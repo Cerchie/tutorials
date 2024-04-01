@@ -73,7 +73,7 @@ In the `AvroConsumer.java` file, those events are consumed and printed to the co
 ## Running the example
 
 You can run this example either with Confluent Cloud or by running the unit test. Before getting started with either method,
-clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/handling-null-values`.
+clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/handling-null-values-in-avro-and-protobuf`.
 
 <details>
   <summary>Kafka Streams-based test</summary>
@@ -87,7 +87,7 @@ clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/h
 From the top-level directory:
 
 ```
-./gradlew clean :handling-null-values:kafka:test --info  
+./gradlew clean :handling-null-values-in-avro-and-protobuf:kafka:test --info  
 ```
 
 <details>
@@ -111,7 +111,7 @@ On the right-hand navbar, click 'API keys -> Add key -> Global access'. Download
 
 In the same navbar, click 'Clients -> Choose Your Language -> Java -> Create Schema Registry API key'. Save this key and secret as well as the URL listed in the configuration snippet. 
 
-Now, create a file at `handling-null-values/resources/confluent.properties` with these values in it:
+Now, create a file at `handling-null-values-in-avro-and-protobuf/resources/confluent.properties` with these values in it:
 
 ```
 # Required connection configs for Kafka producer, consumer, and admin
@@ -143,7 +143,7 @@ basic.auth.user.info=API_KEY:SECRET
 
 Replace the USERNAME and PASSWORD values with the Confluent Cloud key and secret respectively. Add the url from the schema registry client configuration snippet for `SR_URL/S` and add the schema registry API key and secret for `basic.auth.user.info`, retaining the colon in the placeholder. 
 
-Inside `handling-null-values/kafka/code/src/main/avro/purchase.avsc` you'll see: 
+Inside `handling-null-values-in-avro-and-protobuf/kafka/code/src/main/avro/purchase.avsc` you'll see: 
 
 ```
 {
@@ -158,7 +158,7 @@ Inside `handling-null-values/kafka/code/src/main/avro/purchase.avsc` you'll see:
 }
 ```
 
-When you run `./gradlew :handling-null-values:kafka:runAvroProducer` and furthermore, `./gradlew :handling-null-values:kafka:runAvroConsumer`, you'll see that the events with null items are produced and consumed successfully. 
+When you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroProducer` and furthermore, `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroConsumer`, you'll see that the events with null items are produced and consumed successfully. 
 
 Now remove the `["string", "null"]` in the first field and replace it with `"string"`:
 
@@ -175,9 +175,9 @@ Now remove the `["string", "null"]` in the first field and replace it with `"str
 }
 ```
 
-Now, if you run the code using `./gradlew :handling-null-values:kafka:runAvroProducer`, you will see that the producer does not produce events. If Avro schemas are to accept null values they need it set explicitly on the field.
+Now, if you run the code using `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroProducer`, you will see that the producer does not produce events. If Avro schemas are to accept null values they need it set explicitly on the field.
 
-How about null values in Protobuf schema fields? See: `handling-null-values/kafka/code/src/main/proto/purchase.proto`:
+How about null values in Protobuf schema fields? See: `handling-null-values-in-avro-and-protobuf/kafka/code/src/main/proto/purchase.proto`:
 
 ```
 syntax = "proto3";
@@ -199,7 +199,7 @@ Look at `ProtoProducerApp.java`, lines 76-77:
                 .setTotalCost(random.nextDouble() * random.nextInt(100));
 ``` 
 
-We can see that the developer who wrote this app 'forgot' to write the `setItem()` method that adds an item. This means that the value will be null. But when you run you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoProducer` and `./gradlew :handling-null-values:kafka:runProtoConsumer` no errors will arise. That's because Protobuf automatically handles default values.
+We can see that the developer who wrote this app 'forgot' to write the `setItem()` method that adds an item. This means that the value will be null. But when you run you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoProducer` and `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoConsumer` no errors will arise. That's because Protobuf automatically handles default values.
 
 The message will look something like this in Confluent Cloud:
 
@@ -226,3 +226,13 @@ Now, if you _explicitly_ set the value of the item to null like so:
 ``` 
 
 In this case, you'll receive a NullPointer error. You can allow null values to be explicitly set with a [protocol wrapper type](https://protobuf.dev/reference/protobuf/google.protobuf/https://protobuf.dev/reference/protobuf/google.protobuf/).
+
+#### Delete your env 
+
+Open the Confluent Cloud Console and go to the Environments page at https://confluent.cloud/environments.
+
+Click on the environment you want to delete.
+
+In the environment panel that appears when you click on the environment, click 'Delete Environment'. A confirmation dialog will appear.
+
+Confirm that you want to delete the environment by entering the environment name and then click 'Continue'.
