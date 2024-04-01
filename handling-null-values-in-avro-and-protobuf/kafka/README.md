@@ -73,7 +73,7 @@ In the `AvroConsumer.java` file, those events are consumed and printed to the co
 ## Running the example
 
 You can run this example either with Confluent Cloud or by running the unit test. Before getting started with either method,
-clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/handling-null-values-in-avro-and-protobuf`.
+clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/handling-null-values`.
 
 <details>
   <summary>Kafka Streams-based test</summary>
@@ -87,7 +87,7 @@ clone `https://github.com/confluentinc/tutorials.git` and `cd` into `tutorials/h
 From the top-level directory:
 
 ```
-./gradlew clean :handling-null-values-in-avro-and-protobuf:kafka:test --info  
+./gradlew clean :handling-null-values:kafka:test --info  
 ```
 
 <details>
@@ -158,7 +158,7 @@ Inside `handling-null-values/kafka/code/src/main/avro/purchase.avsc` you'll see:
 }
 ```
 
-When you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroProducer` and furthermore, `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroConsumer`, you'll see that the events with null items are produced and consumed successfully. 
+When you run `./gradlew :handling-null-values:kafka:runAvroProducer` and furthermore, `./gradlew :handling-null-values:kafka:runAvroConsumer`, you'll see that the events with null items are produced and consumed successfully. 
 
 Now remove the `["string", "null"]` in the first field and replace it with `"string"`:
 
@@ -175,7 +175,7 @@ Now remove the `["string", "null"]` in the first field and replace it with `"str
 }
 ```
 
-Now, if you run the code using `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runAvroProducer`, you will see that the producer does not produce events. If Avro schemas are to accept null values they need it set explicitly on the field.
+Now, if you run the code using `./gradlew :handling-null-values:kafka:runAvroProducer`, you will see that the producer does not produce events. If Avro schemas are to accept null values they need it set explicitly on the field.
 
 How about null values in Protobuf schema fields? See: `handling-null-values/kafka/code/src/main/proto/purchase.proto`:
 
@@ -199,7 +199,7 @@ Look at `ProtoProducerApp.java`, lines 76-77:
                 .setTotalCost(random.nextDouble() * random.nextInt(100));
 ``` 
 
-We can see that the developer who wrote this app 'forgot' to write the `setItem()` method that adds an item. This means that the value will be null. But when you run you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoProducer` and `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoConsumer` no errors will arise. That's because Protobuf automatically handles default values.
+We can see that the developer who wrote this app 'forgot' to write the `setItem()` method that adds an item. This means that the value will be null. But when you run you run `./gradlew :handling-null-values-in-avro-and-protobuf:kafka:runProtoProducer` and `./gradlew :handling-null-values:kafka:runProtoConsumer` no errors will arise. That's because Protobuf automatically handles default values.
 
 The message will look something like this in Confluent Cloud:
 
