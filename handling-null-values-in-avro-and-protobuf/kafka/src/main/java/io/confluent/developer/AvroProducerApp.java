@@ -26,26 +26,19 @@ public class AvroProducerApp {
         private final Random random = new Random();
         private final List<String> items = List.of("shoes", "sun-glasses", "t-shirt");
 
+    private Producer<String, PurchaseAvro> producer;
+
+    public AvroProducerApp(Producer<String, PurchaseAvro> producer) {
+        this.producer = producer;
+    }
+
         public List<PurchaseAvro> producePurchaseEvents() {
             PurchaseAvro.Builder purchaseBuilder = PurchaseAvro.newBuilder();
-            Properties properties = loadProperties();
-
-            Map<String, Object> avroProducerConfigs = new HashMap<>();
 
 
-            properties.forEach((key, value) -> avroProducerConfigs.put((String) key, value));
-
-            avroProducerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-            avroProducerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
-            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
-            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.USE_LATEST_VERSION, true);
-            // Setting schema auto-registration to false since we already registered the schema manually following best practice
-            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
-
-            System.out.printf("Producer now configured for using SchemaRegistry %n");
 
             List<PurchaseAvro> avroPurchaseEvents = new ArrayList<>();
-            try (final Producer<String, PurchaseAvro> producer = new KafkaProducer<>(avroProducerConfigs)) {
+
                 String avroTopic = "avro-purchase";
 
                 PurchaseAvro avroPurchase = getPurchaseObjectAvro(purchaseBuilder);
@@ -63,7 +56,7 @@ public class AvroProducerApp {
                 })));
 
 
-            }
+
             return avroPurchaseEvents;
         }
 
@@ -75,8 +68,8 @@ public class AvroProducerApp {
             return purchaseAvroBuilder.build();
         }
 
-        Properties loadProperties() {
-            try (InputStream inputStream = this.getClass()
+       static Properties loadProperties() {
+            try (InputStream inputStream = AvroProducerApp.class
                     .getClassLoader()
                     .getResourceAsStream("confluent.properties")) {
                 Properties props = new Properties();
@@ -88,7 +81,22 @@ public class AvroProducerApp {
         }
 
         public static void main(String[] args) {
-            AvroProducerApp producerApp = new AvroProducerApp();
+            Map<String, Object> avroProducerConfigs = new HashMap<>();
+
+            Properties properties = loadProperties();
+
+            properties.forEach((key, value) -> avroProducerConfigs.put((String) key, value));
+
+            avroProducerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+            avroProducerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
+            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.USE_LATEST_VERSION, true);
+            // Setting schema auto-registration to false since we already registered the schema manually following best practice
+            avroProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
+
+
+            Producer<String, PurchaseAvro> avroProducer = new KafkaProducer<>(avroProducerConfigs);
+            io.confluent.developer.AvroProducerApp producerApp = new io.confluent.developer.AvroProducerApp(avroProducer);
             producerApp.producePurchaseEvents();
         }
     }

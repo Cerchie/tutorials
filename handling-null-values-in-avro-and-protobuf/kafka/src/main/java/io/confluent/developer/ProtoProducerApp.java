@@ -15,33 +15,31 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Random;
+import java.util.*;
 
 public class ProtoProducerApp {
     private static final Logger LOG = LoggerFactory.getLogger(ProtoProducerApp.class);
     private final Random random = new Random();
-    public List<Purchase>  producePurchaseEvents() {
-        Builder purchaseBuilder = Purchase.newBuilder();
-        Properties properties = loadProperties();
 
-        Map<String, Object> protoProducerConfigs = new HashMap<>();
+        private final List<String> items = List.of("shoes", "sun-glasses", "t-shirt");
 
-        properties.forEach((key, value) -> protoProducerConfigs.put((String) key, value));
+        private Producer<String, Purchase> producer;
 
-        protoProducerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        protoProducerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaProtobufSerializer.class);
-        // Setting schema auto-registration to false since we already registered the schema manually following best practice
-        protoProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
+    private ProtoProducerApp protoProducerApp;
+    private ProtoConsumerApp protoConsumerApp;
 
-        System.out.printf("Producer now configured for using SchemaRegistry %n");
-        List<Purchase> protoPurchaseEvents = new ArrayList<>();
 
-        try (final Producer<String, Purchase> producer = new KafkaProducer<>(protoProducerConfigs)) {
+    public ProtoProducerApp(Producer<String, Purchase> producer) {
+            this.producer = producer;
+        }
+
+
+    public List<Purchase> producePurchaseEvents() {
+
+        Purchase.Builder purchaseBuilder = Purchase.newBuilder();
+
+         List<Purchase> protoPurchaseEvents = new ArrayList<>();
+
             String protoTopic = "proto-purchase";
 
             Purchase protoPurchase = getPurchaseObjectProto(purchaseBuilder);
@@ -58,9 +56,13 @@ public class ProtoProducerApp {
                 }
             })));
 
-        }
+
         return protoPurchaseEvents;
+
+
     }
+
+
 
 
 
@@ -71,20 +73,29 @@ public class ProtoProducerApp {
         return purchaseBuilder.build();
     }
 
-    Properties loadProperties() {
-        try (InputStream inputStream = this.getClass()
-                .getClassLoader()
-                .getResourceAsStream("confluent.properties")) {
-            Properties props = new Properties();
-            props.load(inputStream);
-            return props;
-        } catch (IOException exception) {
-            throw new RuntimeException(exception);
-        }
-    }
-
-    public static void main(String[] args) {
-        ProtoProducerApp producerApp = new ProtoProducerApp();
-        producerApp.producePurchaseEvents();
+static Properties loadProperties() {
+    try (InputStream inputStream = ProtoProducerApp.class
+            .getClassLoader()
+            .getResourceAsStream("confluent.properties")) {
+        Properties props = new Properties();
+        props.load(inputStream);
+        return props;
+    } catch (IOException exception) {
+        throw new RuntimeException(exception);
     }
 }
+
+    public static void main(String[] args) {
+        Map<String, Object> protoProducerConfigs = new HashMap<>();
+        Properties properties = loadProperties();
+        properties.forEach((key, value) -> protoProducerConfigs.put((String) key, value));
+
+        protoProducerConfigs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        protoProducerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaProtobufSerializer.class);
+        // Setting schema auto-registration to false since we already registered the schema manually following best practice
+        protoProducerConfigs.put(AbstractKafkaSchemaSerDeConfig.AUTO_REGISTER_SCHEMAS, false);
+        Producer<String, Purchase> protoProducer = new KafkaProducer<>(protoProducerConfigs);
+        io.confluent.developer.ProtoProducerApp producerApp = new io.confluent.developer.ProtoProducerApp(protoProducer);
+        producerApp.producePurchaseEvents();
+    }}
+

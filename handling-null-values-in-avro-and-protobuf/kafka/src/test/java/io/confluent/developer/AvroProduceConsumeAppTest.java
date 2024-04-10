@@ -2,9 +2,7 @@ package io.confluent.developer;
 
 
 import io.confluent.developer.avro.PurchaseAvro;
-
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.MockConsumer;
@@ -15,19 +13,11 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KeyValue;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -35,35 +25,26 @@ import static org.junit.Assert.assertEquals;
 
 public class AvroProduceConsumeAppTest {
     private static final Map<String, Object> commonConfigs = new HashMap<>();
-    private static final Properties properties = new Properties();
     private final Serializer<String> stringSerializer = new StringSerializer();
     private AvroProducerApp avroProducerApp;
     private AvroConsumerApp avroConsumerApp;
 
     @BeforeClass
     public static void beforeAllTests() throws IOException {
-        try (FileInputStream fis = new FileInputStream("../main/resources/test.properties")) {
-            properties.load(fis);
-            properties.forEach((key, value) -> commonConfigs.put((String) key, value));
-        }
-    }
-
-
-    @Before
-    public void setup() {
-        avroProducerApp = new AvroProducerApp();
-        avroConsumerApp = new AvroConsumerApp();
+            commonConfigs.put("schema.registry.url", "mock://null-values-produce-consume-test");
+            commonConfigs.put("avro.topic", "avro-records");
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void testProduceAvroMultipleEvents() {
+
         KafkaAvroSerializer avroSerializer
                 = new KafkaAvroSerializer();
         avroSerializer.configure(commonConfigs, false);
-        MockProducer<String, SpecificRecordBase> mockAvroProducer
-                = new MockProducer<String, SpecificRecordBase>(true, stringSerializer, (Serializer) avroSerializer);
-
+        MockProducer<String, PurchaseAvro> mockAvroProducer
+                = new MockProducer<String, PurchaseAvro>(true, stringSerializer, (Serializer) avroSerializer);
+        AvroProducerApp avroProducerApp = new AvroProducerApp(mockAvroProducer);
         List<PurchaseAvro> returnedAvroResults = avroProducerApp.producePurchaseEvents();
 
         returnedAvroResults.forEach(c ->
@@ -79,23 +60,31 @@ public class AvroProduceConsumeAppTest {
 
     @Test
     public void testConsumeAvroEvents() {
-        MockConsumer<String, PurchaseAvro> mockConsumer = new MockConsumer<>(OffsetResetStrategy.LATEST);
+        KafkaAvroSerializer avroSerializer
+                = new KafkaAvroSerializer();
+        avroSerializer.configure(commonConfigs, false);
+        MockProducer<String, PurchaseAvro> mockAvroProducer
+                = new MockProducer<String, PurchaseAvro>(true, stringSerializer, (Serializer) avroSerializer);
+        AvroProducerApp avroProducerApp = new AvroProducerApp(mockAvroProducer);
+        MockConsumer<String, PurchaseAvro> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
         String topic = (String) commonConfigs.get("avro.topic");
 
         mockConsumer.schedulePollTask(() -> {
             addTopicPartitionsAssignment(topic, mockConsumer);
             addConsumerRecords(mockConsumer, avroProducerApp.producePurchaseEvents(), PurchaseAvro::getCustomerId, topic);
         });
-
+        AvroConsumerApp avroConsumerApp = new AvroConsumerApp(mockConsumer);
         ConsumerRecords<String,PurchaseAvro> returnedAvroResults = avroConsumerApp.consumePurchaseEvents();
         List<PurchaseAvro> actualAvroResults = new ArrayList<>();
+
         returnedAvroResults.forEach(c ->
         {
             PurchaseAvro purchaseAvro = c.value();
             assertEquals("Customer Null", purchaseAvro.getCustomerId());
             assertEquals(null,purchaseAvro.getItem());
-            assertEquals(actualAvroResults.size(), 2);
+            actualAvroResults.add(purchaseAvro);
         });
+        assertEquals(2, actualAvroResults.size());
 
         mockConsumer.schedulePollTask(() -> avroConsumerApp.close());
     }

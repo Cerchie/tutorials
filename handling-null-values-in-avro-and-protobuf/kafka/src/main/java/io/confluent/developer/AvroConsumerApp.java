@@ -1,15 +1,13 @@
 package io.confluent.developer;
 
 import io.confluent.developer.avro.PurchaseAvro;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,10 +15,15 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
 
 public class AvroConsumerApp implements AutoCloseable{
+
+    private Consumer<String, PurchaseAvro> consumer;
+    public AvroConsumerApp(Consumer<String, PurchaseAvro> consumer) {
+        this.consumer = consumer;
+    }
 
     public void close() {
         keepConsumingAvro = false;
@@ -28,28 +31,13 @@ public class AvroConsumerApp implements AutoCloseable{
         executorService.shutdown();
     }
     private volatile boolean keepConsumingAvro = true;
-
         public ConsumerRecords<String, PurchaseAvro> consumePurchaseEvents() {
-            Properties properties = loadProperties();
 
-            Map<String, Object> avroConsumerConfigs = new HashMap<>();
+            consumer.subscribe(Collections.singletonList("avro-purchase"));
 
-
-            properties.forEach((key, value) -> avroConsumerConfigs.put((String) key, value));
-            avroConsumerConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, "null-value-consumer");
-            avroConsumerConfigs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-            avroConsumerConfigs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-            avroConsumerConfigs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
-            avroConsumerConfigs.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
-
-            Consumer<String, PurchaseAvro> avroConsumer = new KafkaConsumer<>(avroConsumerConfigs);
-
-            avroConsumer.subscribe(Collections.singletonList("avro-purchase"));
-
-            ConsumerRecords<String, PurchaseAvro> avroConsumerRecords = avroConsumer.poll(Duration.ofSeconds(2));
+            ConsumerRecords<String, PurchaseAvro> avroConsumerRecords = consumer.poll(Duration.ofSeconds(2));
 
             avroConsumerRecords.forEach(avroConsumerRecord -> {
-                System.out.printf("TEST");
                 PurchaseAvro avroPurchase = avroConsumerRecord.value();
                 System.out.print("Purchase details consumed from topic with Avro schema { ");
                 System.out.printf("Customer: %s, ", avroPurchase.getCustomerId());
@@ -58,8 +46,8 @@ public class AvroConsumerApp implements AutoCloseable{
             });
             return avroConsumerRecords;
         }
-        Properties loadProperties () {
-            try (InputStream inputStream = this.getClass()
+        static Properties loadProperties () {
+            try (InputStream inputStream = AvroConsumerApp.class
                     .getClassLoader()
                     .getResourceAsStream("confluent.properties")) {
                 Properties props = new Properties();
@@ -70,8 +58,23 @@ public class AvroConsumerApp implements AutoCloseable{
             }
         }
         public static void main (String[]args){
-            io.confluent.developer.AvroConsumerApp consumerApp = new io.confluent.developer.AvroConsumerApp();
+
+            Map<String, Object> avroConsumerConfigs = new HashMap<>();
+
+            Properties properties = loadProperties();
+
+            properties.forEach((key, value) -> avroConsumerConfigs.put((String) key, value));
+
+            avroConsumerConfigs.put(ConsumerConfig.GROUP_ID_CONFIG, "null-value-consumer");
+            avroConsumerConfigs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+            avroConsumerConfigs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+            avroConsumerConfigs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+            avroConsumerConfigs.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
+
+            Consumer<String, PurchaseAvro> avroConsumer = new KafkaConsumer<>(avroConsumerConfigs);
+            io.confluent.developer.AvroConsumerApp consumerApp = new io.confluent.developer.AvroConsumerApp(avroConsumer);
             consumerApp.consumePurchaseEvents();
+
         }
 
 }
